@@ -3,7 +3,7 @@
 #include "LLTableBuilder.h"
 #include <stack>
 
-LLTableBuilderLibrary::LLTableBuilderLibrary(std::string const & fileName)
+LLTableBuilder::LLTableBuilder(std::string const & fileName)
 	: m_input(fileName)
 {
 	try
@@ -138,24 +138,24 @@ LLTableBuilderLibrary::LLTableBuilderLibrary(std::string const & fileName)
 	}
 }
 
-Table const & LLTableBuilderLibrary::GetTable() const
+Table const & LLTableBuilder::GetTable() const
 {
 	return m_table;
 }
 
-char const LLTableBuilderLibrary::EMPTY_CHARACTER = 'e';
-std::string const LLTableBuilderLibrary::EMPTY_CHARACTER_STRING = std::string(1, LLTableBuilderLibrary::EMPTY_CHARACTER);
+char const LLTableBuilder::EMPTY_CHARACTER = 'e';
+std::string const LLTableBuilder::EMPTY_CHARACTER_STRING = std::string(1, LLTableBuilder::EMPTY_CHARACTER);
 
-std::string const LLTableBuilderLibrary::END_OF_LINE_STRING = "#";
+std::string const LLTableBuilder::END_OF_LINE_STRING = "#";
 
-void LLTableBuilderLibrary::PrintParsingError(Input const & m_input, std::string const & message)
+void LLTableBuilder::PrintParsingError(Input const & m_input, std::string const & message)
 {
 	std::cout << m_input.GetFileName()
 			<< "(" << m_input.GetPosition().GetLine() << ", " << m_input.GetPosition().GetColumn() << ")"
 			<< ": " << message;
 }
 
-void LLTableBuilderLibrary::ParseNonterminalDeclaration(Input & m_input, std::string & nonterminal)
+void LLTableBuilder::ParseNonterminalDeclaration(Input & m_input, std::string & nonterminal)
 {
 	if (!m_input.ReadUntilCharacters({ '-' }, nonterminal))
 	{
@@ -168,7 +168,7 @@ void LLTableBuilderLibrary::ParseNonterminalDeclaration(Input & m_input, std::st
 	m_input.SkipArgument<char>();
 }
 
-bool LLTableBuilderLibrary::TryToParseSymbol(
+bool LLTableBuilder::TryToParseSymbol(
 	std::string const & sequenceString, size_t & fromPos, char leftBorder, char rightBorder, Symbol & symbol)
 {
 	Symbol possibleSymbol;
@@ -196,7 +196,7 @@ bool LLTableBuilderLibrary::TryToParseSymbol(
 	return false;
 }
 
-void LLTableBuilderLibrary::SplitSequenceString(std::string const & sequenceString, std::vector<Symbol> & sequence)
+void LLTableBuilder::SplitSequenceString(std::string const & sequenceString, std::vector<Symbol> & sequence)
 {
 	for (size_t i = 0; i < sequenceString.size(); ++i)
 	{
@@ -215,7 +215,7 @@ void LLTableBuilderLibrary::SplitSequenceString(std::string const & sequenceStri
 	}
 }
 
-void LLTableBuilderLibrary::ParseSequenceString(Input & m_input, std::string & sequenceString)
+void LLTableBuilder::ParseSequenceString(Input & m_input, std::string & sequenceString)
 {
 	std::string possibleSequenceString;
 	m_input.ReadUntilCharacters({ '/', '\n' }, possibleSequenceString);
@@ -227,7 +227,7 @@ void LLTableBuilderLibrary::ParseSequenceString(Input & m_input, std::string & s
 	sequenceString = std::move(possibleSequenceString);
 }
 
-void LLTableBuilderLibrary::ParseReferencingSet(Input & m_input, std::unordered_set<std::string> & referencingSet)
+void LLTableBuilder::ParseReferencingSet(Input & m_input, std::unordered_set<std::string> & referencingSet)
 {
 	std::string reference;
 	while (m_input.ReadUntilCharacters({ ',', '\n' }, reference) && !reference.empty())

@@ -7,10 +7,10 @@
 
 class Symbol;
 
-class LLTableBuilderLibrary
+class LLTableBuilder
 {
 public:
-	explicit LLTableBuilderLibrary(std::string const & fileName);
+	explicit LLTableBuilder(std::string const & fileName);
 	Table const & GetTable() const;
 
 private:
