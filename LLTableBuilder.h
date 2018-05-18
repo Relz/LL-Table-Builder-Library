@@ -5,6 +5,7 @@
 #include "Table/Table.h"
 #include <string>
 
+enum class Token;
 class Symbol;
 
 class LLTableBuilder
@@ -16,7 +17,7 @@ public:
 private:
 	static char const EMPTY_CHARACTER;
 	static std::string const EMPTY_CHARACTER_STRING;
-	static std::string const END_OF_LINE_STRING;
+	static std::string const EMPTY_CHARACTER_STRING_BORDERED;
 
 	Input m_input;
 
@@ -25,7 +26,7 @@ private:
 
 	std::vector<std::pair<std::string, unsigned int>> m_unresolvedNextIds;
 	std::unordered_map<std::string, std::vector<unsigned int>> m_tableReferences;
-	std::unordered_map<std::string, std::unordered_set<std::string>> m_referencingSets;
+	std::unordered_map<std::string, std::unordered_set<Token>> m_referencingSets;
 
 	void PrintParsingError(Input const & input, std::string const & message);
 	void ParseNonterminalDeclaration(Input & input, std::string & nonterminal);
@@ -33,8 +34,8 @@ private:
 		std::string const & sequenceString, size_t & fromPos, char leftBorder, char rightBorder, Symbol & symbol);
 	void SplitSequenceString(std::string const & sequenceString, std::vector<Symbol> & sequence);
 	void ParseSequenceString(Input & input, std::string & sequenceString);
-	void ParseReferencingSet(Input & input, std::unordered_set<std::string> & referencingSet);
-
+	void ParseReferencingSet(Input & input, std::unordered_set<Token> & referencingSet);
+	void UpdateIsErrorOfAlternatives(std::string const & nonterminal);
 };
 
 #endif

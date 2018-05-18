@@ -1,4 +1,6 @@
 #include "Table/TableRow/TableRow.h"
+#include "TokenLibrary/Token.h"
+#include "TokenLibrary/TokenExtensions/TokenExtensions.h"
 #include "Symbol/Symbol.h"
 #include "LLTableBuilder.h"
 #include <stack>
@@ -16,21 +18,23 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 			std::string sequenceString;
 			ParseSequenceString(m_input, sequenceString);
 
-			std::unordered_set<std::string> referencingSet;
+			bool isEmptyCharacterSequence = sequenceString == EMPTY_CHARACTER_STRING_BORDERED;
+
+			std::unordered_set<Token> referencingSet;
 			ParseReferencingSet(m_input, referencingSet);
+
+			if (isEmptyCharacterSequence)
+			{
+				sequenceString.insert(sequenceString.end() - 1, nonterminal.begin(), nonterminal.end());
+				m_referencingSets[EMPTY_CHARACTER + nonterminal].insert(referencingSet.begin(), referencingSet.end());
+			}
 
 			++m_currentTableRowId;
 
 			TableRow * tableRow = new TableRow();
 			tableRow->referencingSet = referencingSet;
 
-			if (m_tableReferences.find(nonterminal) != m_tableReferences.end())
-			{
-				for (unsigned int tableRowId : m_tableReferences.at(nonterminal))
-				{
-					m_table.GetRow(tableRowId)->isError = false;
-				}
-			}
+			UpdateIsErrorOfAlternatives(nonterminal);
 
 			m_unresolvedNextIds.emplace_back(std::make_pair(sequenceString, m_currentTableRowId));
 			m_tableReferences[nonterminal].emplace_back(m_currentTableRowId);
@@ -43,18 +47,14 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 
 			m_table.AddRow(m_currentTableRowId, tableRow);
 
-			if (sequenceString == std::string(1, Symbol::NONTERMINAL_LEFT_BORDER) + EMPTY_CHARACTER + Symbol::NONTERMINAL_RIGHT_BORDER)
-			{
-				m_referencingSets[EMPTY_CHARACTER_STRING].insert(referencingSet.begin(), referencingSet.end());
-			}
-
 			m_input.SkipLine();
 		}
 	}
 	catch (std::runtime_error const & e)
 	{
 		PrintParsingError(m_input, e.what());
-		throw std::runtime_error("Parsing error. Please check " + fileName + " for errors");
+		std::cerr << "\n";
+		std::cerr << "Parsing error. Please check " << fileName << " for errors.\n";
 	}
 
 	try
@@ -72,16 +72,19 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 			for (size_t i = 0; i < sequence.size(); ++i)
 			{
 				Symbol const & sequenceElement = sequence.at(i);
-
 				++m_currentTableRowId;
 
 				TableRow * tableRow = new TableRow();
 
-				std::string symbolValue = sequenceElement.GetValue();
-
+				std::string const & symbolValueString = sequenceElement.GetValue();
 				if (sequenceElement.IsTerminal())
 				{
-					tableRow->referencingSet = std::unordered_set<std::string>({ symbolValue });
+					Token symbolValue;
+					if (!TokenExtensions::CreateFromString(symbolValueString, symbolValue))
+					{
+						throw std::runtime_error("Cannot create token from string: " + symbolValueString);
+					}
+					tableRow->referencingSet = std::unordered_set<Token>({ symbolValue });
 					if (i == sequence.size() - 1)
 					{
 						tableRow->nextId = 0;
@@ -90,7 +93,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					{
 						tableRow->nextId = m_currentTableRowId + 1;
 					}
-					if (symbolValue == END_OF_LINE_STRING)
+					if (symbolValue == Token::END_OF_FILE)
 					{
 						tableRow->doShift = false;
 						tableRow->isEnd = true;
@@ -104,14 +107,14 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 				}
 				else if (sequenceElement.IsNonterminal())
 				{
-					tableRow->referencingSet = m_referencingSets.at(symbolValue);
-					if (symbolValue == EMPTY_CHARACTER_STRING)
+					tableRow->referencingSet = m_referencingSets.at(symbolValueString);
+					if (symbolValueString.at(0) == EMPTY_CHARACTER)
 					{
 						tableRow->nextId = 0;
 					}
 					else
 					{
-						tableRow->nextId = m_tableReferences.at(symbolValue).front();
+						tableRow->nextId = m_tableReferences.at(symbolValueString).front();
 					}
 					tableRow->doShift = false;
 					if (i == sequence.size() - 1)
@@ -133,8 +136,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 	}
 	catch (std::runtime_error const & e)
 	{
-		std::cout << e.what();
-		throw std::runtime_error("Parsing error. Please check " + fileName + " for errors");
+		std::cerr << "Resolving next id error: " << e.what() << "\n";
 	}
 }
 
@@ -145,14 +147,14 @@ Table const & LLTableBuilder::GetTable() const
 
 char const LLTableBuilder::EMPTY_CHARACTER = 'e';
 std::string const LLTableBuilder::EMPTY_CHARACTER_STRING = std::string(1, LLTableBuilder::EMPTY_CHARACTER);
-
-std::string const LLTableBuilder::END_OF_LINE_STRING = "#";
+std::string const LLTableBuilder::EMPTY_CHARACTER_STRING_BORDERED =
+	std::string(1, Symbol::NONTERMINAL_LEFT_BORDER) + EMPTY_CHARACTER + Symbol::NONTERMINAL_RIGHT_BORDER;
 
 void LLTableBuilder::PrintParsingError(Input const & m_input, std::string const & message)
 {
-	std::cout << m_input.GetFileName()
-			<< "(" << m_input.GetPosition().GetLine() << ", " << m_input.GetPosition().GetColumn() << ")"
-			<< ": " << message;
+	std::cerr << m_input.GetFileName()
+		<< "(" << m_input.GetPosition().GetLine() << ", " << m_input.GetPosition().GetColumn() << ")"
+		<< ": " << message;
 }
 
 void LLTableBuilder::ParseNonterminalDeclaration(Input & m_input, std::string & nonterminal)
@@ -174,7 +176,8 @@ bool LLTableBuilder::TryToParseSymbol(
 	Symbol possibleSymbol;
 	if (sequenceString.at(fromPos) == leftBorder)
 	{
-		for (size_t j = fromPos; j < sequenceString.size(); ++j)
+		size_t j = fromPos;
+		for (j; j < sequenceString.length(); ++j)
 		{
 			possibleSymbol.push_back(sequenceString.at(j));
 			if (sequenceString.at(j) == rightBorder)
@@ -185,9 +188,10 @@ bool LLTableBuilder::TryToParseSymbol(
 		if (possibleSymbol.back() != rightBorder)
 		{
 			throw std::runtime_error(
-					std::string("Symbol parsing: ") + sequenceString + ": " + "from " + std::to_string(fromPos) + ": "
-							+ "'" + std::string(1, rightBorder) + "'" + " expected"
-			);
+				std::string("Symbol parsing: ")
+				+ '"' + sequenceString + '"' + ": "
+				+ "(" + std::to_string(fromPos) + '-' + std::to_string(j) + ")" + ": "
+				+ "'" + std::string(1, rightBorder) + "'" + " expected");
 		}
 		symbol = std::move(possibleSymbol);
 		fromPos += symbol.size() - 1;
@@ -198,44 +202,63 @@ bool LLTableBuilder::TryToParseSymbol(
 
 void LLTableBuilder::SplitSequenceString(std::string const & sequenceString, std::vector<Symbol> & sequence)
 {
-	for (size_t i = 0; i < sequenceString.size(); ++i)
+	for (size_t i = 0; i < sequenceString.length(); ++i)
 	{
 		sequence.emplace_back(Symbol());
 		if (!TryToParseSymbol(
 				sequenceString, i, Symbol::NONTERMINAL_LEFT_BORDER, Symbol::NONTERMINAL_RIGHT_BORDER, sequence.back())
 				&& !TryToParseSymbol(
-						sequenceString, i, Symbol::TERMINAL_LEFT_BORDER, Symbol::TERMINAL_RIGHT_BORDER, sequence.back()))
+					sequenceString, i, Symbol::TERMINAL_LEFT_BORDER, Symbol::TERMINAL_RIGHT_BORDER, sequence.back()))
 		{
 			throw std::runtime_error(
-					"Sequence string splitting: "
-							+ std::string(1, '"') + sequenceString + std::string(1, '"') + "(" + std::to_string(i + 1) + ")" + ": "
-							+ "'" + std::string(1, sequenceString.at(i)) + "'" + " not expected"
-			);
+				std::string("Sequence string splitting: ")
+					+ '"' + sequenceString + '"' + "(" + std::to_string(i + 1) + ")" + ": "
+					+ "'" + std::string(1, Symbol::NONTERMINAL_LEFT_BORDER) + "'" + " or "
+					+ "'" + std::string(1, Symbol::TERMINAL_LEFT_BORDER) + "'"
+					+ " expected");
 		}
 	}
 }
 
 void LLTableBuilder::ParseSequenceString(Input & m_input, std::string & sequenceString)
 {
-	std::string possibleSequenceString;
-	m_input.ReadUntilCharacters({ '/', '\n' }, possibleSequenceString);
+	m_input.ReadUntilCharacters({ '/', '\n' }, sequenceString);
 	if (m_input.IsEndOfLine())
 	{
 		throw std::runtime_error("Referencing set expected");
 	}
 	m_input.SkipArgument<char>();
-	sequenceString = std::move(possibleSequenceString);
 }
 
-void LLTableBuilder::ParseReferencingSet(Input & m_input, std::unordered_set<std::string> & referencingSet)
+void LLTableBuilder::ParseReferencingSet(Input & m_input, std::unordered_set<Token> & referencingSet)
 {
-	std::string reference;
-	while (m_input.ReadUntilCharacters({ ',', '\n' }, reference) && !reference.empty())
+	std::string referenceString;
+	while (m_input.ReadUntilCharacters({ ',', '\n' }, referenceString))
 	{
+		Token reference;
+		if (!TokenExtensions::CreateFromString(referenceString, reference))
+		{
+			throw std::runtime_error("Cannot create token from string: " + referenceString);
+		}
 		referencingSet.emplace(reference);
-		if (!m_input.IsEndOfLine())
+		if (m_input.IsEndOfLine())
+		{
+			break;
+		}
+		else
 		{
 			m_input.SkipArgument<char>();
+		}
+	}
+}
+
+void LLTableBuilder::UpdateIsErrorOfAlternatives(std::string const & nonterminal)
+{
+	if (m_tableReferences.find(nonterminal) != m_tableReferences.end())
+	{
+		for (unsigned int tableRowId : m_tableReferences.at(nonterminal))
+		{
+			m_table.GetRow(tableRowId)->isError = false;
 		}
 	}
 }

@@ -15,6 +15,11 @@ SET(SOURCE_FILES
 
 ADD_LIBRARY(LLTableBuilderLibrary SHARED ${SOURCE_FILES})
 
-ADD_SUBDIRECTORY(InputLibrary)
+IF (NOT TARGET InputLibrary)
+	ADD_SUBDIRECTORY(InputLibrary)
+ENDIF ()
+IF (NOT TARGET TokenLibrary)
+	ADD_SUBDIRECTORY(TokenLibrary)
+ENDIF ()
 
 TARGET_LINK_LIBRARIES(LLTableBuilderLibrary InputLibrary)
