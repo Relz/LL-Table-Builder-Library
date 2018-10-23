@@ -20,6 +20,9 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 
 			bool isEmptyCharacterSequence = sequenceString == EMPTY_CHARACTER_STRING_BORDERED;
 
+			std::string actionName;
+			TryParseActionNameString(m_input, actionName);
+
 			std::unordered_set<Token> referencingSet;
 			ParseReferencingSet(m_input, referencingSet);
 
@@ -44,6 +47,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 			tableRow->pushToStack = 0;
 			tableRow->isError = true;
 			tableRow->isEnd = false;
+			tableRow->actionName = std::move(actionName);
 
 			m_table.AddRow(m_currentTableRowId, tableRow);
 
@@ -222,16 +226,38 @@ void LLTableBuilder::SplitSequenceString(std::string const & sequenceString, std
 
 void LLTableBuilder::ParseSequenceString(Input & m_input, std::string & sequenceString)
 {
-	m_input.ReadUntilCharacters({ '/', '\n' }, sequenceString);
+	m_input.ReadUntilCharacters({ '{', '/', '\n' }, sequenceString);
 	if (m_input.IsEndOfLine())
 	{
 		throw std::runtime_error("Referencing set expected");
 	}
+}
+
+bool LLTableBuilder::TryParseActionNameString(Input & m_input, std::string & actionNameString)
+{
+	char nextCharacter;
+	if (!m_input.GetNextCharacter(nextCharacter) || nextCharacter != '{')
+	{
+		return false;
+	}
 	m_input.SkipArgument<char>();
+	m_input.ReadUntilCharacters({ '}', '\n' }, actionNameString);
+	if (m_input.IsEndOfLine())
+	{
+		throw std::runtime_error("Action name declaration \"" + actionNameString + "\" wasn't closed by '}' character");
+	}
+	m_input.SkipArgument<char>();
+	return true;
 }
 
 void LLTableBuilder::ParseReferencingSet(Input & m_input, std::unordered_set<Token> & referencingSet)
 {
+	char nextCharacter;
+	if (!m_input.GetNextCharacter(nextCharacter) || nextCharacter != '/')
+	{
+		throw std::runtime_error(R"(Referencing set must starts with "\" character)");
+	}
+	m_input.SkipArgument<char>();
 	std::string referenceString;
 	while (m_input.ReadUntilCharacters({ ',', '\n' }, referenceString))
 	{

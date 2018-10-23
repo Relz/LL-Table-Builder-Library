@@ -35,6 +35,7 @@ private:
 	void SplitSequenceString(std::string const & sequenceString, std::vector<Symbol> & sequence);
 	void ParseSequenceString(Input & input, std::string & sequenceString);
 	void ParseReferencingSet(Input & input, std::unordered_set<Token> & referencingSet);
+	bool TryParseActionNameString(Input & m_input, std::string & actionNameString);
 	void UpdateIsErrorOfAlternatives(std::string const & nonterminal);
 };
 
