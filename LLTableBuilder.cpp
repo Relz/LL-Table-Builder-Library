@@ -59,6 +59,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 		PrintParsingError(m_input, e.what());
 		std::cerr << "\n";
 		std::cerr << "Parsing error. Please check " << fileName << " for errors.\n";
+		return;
 	}
 
 	try
