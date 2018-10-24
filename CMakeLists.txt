@@ -11,7 +11,9 @@ SET(SOURCE_FILES
 	Table/TableRow/TableRow.cpp
 	Table/TableRow/TableRow.h
 	Symbol/Symbol.cpp
-	Symbol/Symbol.h)
+	Symbol/Symbol.h
+	UnresolvedNextIdInformation/UnresolvedNextIdInformation.cpp
+	UnresolvedNextIdInformation/UnresolvedNextIdInformation.h)
 
 ADD_LIBRARY(LLTableBuilderLibrary SHARED ${SOURCE_FILES})
 

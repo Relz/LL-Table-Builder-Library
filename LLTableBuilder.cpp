@@ -39,7 +39,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 
 			UpdateIsErrorOfAlternatives(nonterminal);
 
-			m_unresolvedNextIds.emplace_back(std::make_pair(sequenceString, m_currentTableRowId));
+			m_unresolvedNextIds.emplace_back(UnresolvedNextIdInformation(sequenceString, m_currentTableRowId, actionName));
 			m_tableReferences[nonterminal].emplace_back(m_currentTableRowId);
 			m_referencingSets[nonterminal].insert(referencingSet.begin(), referencingSet.end());
 
@@ -47,7 +47,6 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 			tableRow->pushToStack = 0;
 			tableRow->isError = true;
 			tableRow->isEnd = false;
-			tableRow->actionName = std::move(actionName);
 
 			m_table.AddRow(m_currentTableRowId, tableRow);
 
@@ -64,15 +63,12 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 
 	try
 	{
-		for (auto const & unresolvedNextId : m_unresolvedNextIds)
+		for (UnresolvedNextIdInformation const & unresolvedNextId : m_unresolvedNextIds)
 		{
-			std::string const & sequenceString = unresolvedNextId.first;
-			unsigned int const & tableRowId = unresolvedNextId.second;
-
 			std::vector<Symbol> sequence;
-			SplitSequenceString(sequenceString, sequence);
+			SplitSequenceString(unresolvedNextId.sequenceString, sequence);
 
-			m_table.GetRow(tableRowId)->nextId = m_currentTableRowId + 1;
+			m_table.GetRow(unresolvedNextId.tableRowId)->nextId = m_currentTableRowId + 1;
 
 			for (size_t i = 0; i < sequence.size(); ++i)
 			{
@@ -93,6 +89,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					if (i == sequence.size() - 1)
 					{
 						tableRow->nextId = 0;
+						tableRow->actionName = std::move(unresolvedNextId.actionName);
 					}
 					else
 					{
@@ -125,6 +122,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					if (i == sequence.size() - 1)
 					{
 						tableRow->pushToStack = 0;
+						tableRow->actionName = std::move(unresolvedNextId.actionName);
 					}
 					else
 					{

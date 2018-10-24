@@ -3,6 +3,7 @@
 
 #include "InputLibrary/Input.h"
 #include "Table/Table.h"
+#include "UnresolvedNextIdInformation/UnresolvedNextIdInformation.h"
 #include <string>
 
 enum class Token;
@@ -24,7 +25,7 @@ private:
 	unsigned int m_currentTableRowId = 0;
 	Table m_table;
 
-	std::vector<std::pair<std::string, unsigned int>> m_unresolvedNextIds;
+	std::vector<UnresolvedNextIdInformation> m_unresolvedNextIds;
 	std::unordered_map<std::string, std::vector<unsigned int>> m_tableReferences;
 	std::unordered_map<std::string, std::unordered_set<Token>> m_referencingSets;
 
