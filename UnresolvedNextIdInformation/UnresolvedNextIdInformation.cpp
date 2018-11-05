@@ -1,9 +1,8 @@
 #include "UnresolvedNextIdInformation.h"
 
-UnresolvedNextIdInformation::UnresolvedNextIdInformation(std::string sequenceString, unsigned int tableRowId, std::string actionName)
+UnresolvedNextIdInformation::UnresolvedNextIdInformation(std::string sequenceString, unsigned int tableRowId, std::vector<std::string> actionNames)
 	: sequenceString(std::move(sequenceString))
 	, tableRowId(tableRowId)
-	, actionName(std::move(actionName))
+	, actionNames(std::move(actionNames))
 {
-
 }

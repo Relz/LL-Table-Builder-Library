@@ -20,8 +20,8 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 
 			bool isEmptyCharacterSequence = sequenceString == EMPTY_CHARACTER_STRING_BORDERED;
 
-			std::string actionName;
-			TryParseActionNameString(m_input, actionName);
+			std::vector<std::string> actionNames;
+			TryParseActionNames(m_input, actionNames);
 
 			std::unordered_set<Token> referencingSet;
 			ParseReferencingSet(m_input, referencingSet);
@@ -39,7 +39,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 
 			UpdateIsErrorOfAlternatives(nonterminal);
 
-			m_unresolvedNextIds.emplace_back(UnresolvedNextIdInformation(sequenceString, m_currentTableRowId, actionName));
+			m_unresolvedNextIds.emplace_back(UnresolvedNextIdInformation(sequenceString, m_currentTableRowId, actionNames));
 			m_tableReferences[nonterminal].emplace_back(m_currentTableRowId);
 			m_referencingSets[nonterminal].insert(referencingSet.begin(), referencingSet.end());
 
@@ -89,7 +89,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					if (i == sequence.size() - 1)
 					{
 						tableRow->nextId = 0;
-						tableRow->actionName = std::move(unresolvedNextId.actionName);
+						tableRow->actionNames = std::move(unresolvedNextId.actionNames);
 					}
 					else
 					{
@@ -122,7 +122,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					if (i == sequence.size() - 1)
 					{
 						tableRow->pushToStack = 0;
-						tableRow->actionName = std::move(unresolvedNextId.actionName);
+						tableRow->actionNames = std::move(unresolvedNextId.actionNames);
 					}
 					else
 					{
@@ -232,21 +232,28 @@ void LLTableBuilder::ParseSequenceString(Input & m_input, std::string & sequence
 	}
 }
 
-bool LLTableBuilder::TryParseActionNameString(Input & m_input, std::string & actionNameString)
+bool LLTableBuilder::TryParseActionNames(Input & m_input, std::vector<std::string> & actionNames)
 {
+	bool result = false;
 	char nextCharacter;
-	if (!m_input.GetNextCharacter(nextCharacter) || nextCharacter != '{')
+	while (true)
 	{
-		return false;
+		if (!m_input.GetNextCharacter(nextCharacter) || nextCharacter != '{')
+		{
+			break;
+		}
+		m_input.SkipArgument<char>();
+		std::string actionName;
+		m_input.ReadUntilCharacters({ '}', '\n' }, actionName);
+		if (m_input.IsEndOfLine())
+		{
+			throw std::runtime_error("Action name declaration \"" + actionName + "\" wasn't closed by '}' character");
+		}
+		m_input.SkipArgument<char>();
+		actionNames.emplace_back(actionName);
+		result = true;
 	}
-	m_input.SkipArgument<char>();
-	m_input.ReadUntilCharacters({ '}', '\n' }, actionNameString);
-	if (m_input.IsEndOfLine())
-	{
-		throw std::runtime_error("Action name declaration \"" + actionNameString + "\" wasn't closed by '}' character");
-	}
-	m_input.SkipArgument<char>();
-	return true;
+	return result;
 }
 
 void LLTableBuilder::ParseReferencingSet(Input & m_input, std::unordered_set<Token> & referencingSet)
@@ -254,7 +261,7 @@ void LLTableBuilder::ParseReferencingSet(Input & m_input, std::unordered_set<Tok
 	char nextCharacter;
 	if (!m_input.GetNextCharacter(nextCharacter) || nextCharacter != '/')
 	{
-		throw std::runtime_error(R"(Referencing set must starts with "\" character)");
+		throw std::runtime_error(R"(Referencing set must starts with "/" character)");
 	}
 	m_input.SkipArgument<char>();
 	std::string referenceString;
