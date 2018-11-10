@@ -120,6 +120,12 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					tableRow->pushToStack = 0;
 					tableRow->actionName = std::move(symbolValueString);
 					tableRow->isError = false;
+					TableRow * prevTableRow = m_table.GetRow(m_currentTableRowId - 1);
+					if (prevTableRow != nullptr && prevTableRow->isEnd)
+					{
+						prevTableRow->isEnd = false;
+						tableRow->isEnd = true;
+					}
 				}
 				else if (sequenceElement.IsNonterminal())
 				{
