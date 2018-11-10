@@ -18,14 +18,14 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 			std::string sequenceString;
 			ParseSequenceString(m_input, sequenceString);
 
-			bool isEmptyCharacterSequence = sequenceString == EMPTY_CHARACTER_STRING_BORDERED;
+			bool isEmptyCharacterSequence = sequenceString.rfind(EMPTY_CHARACTER_STRING_BORDERED, 0) != std::string::npos;
 
 			std::unordered_set<Token> referencingSet;
 			ParseReferencingSet(m_input, referencingSet);
 
 			if (isEmptyCharacterSequence)
 			{
-				sequenceString.insert(sequenceString.end() - 1, nonterminal.begin(), nonterminal.end());
+				sequenceString.insert(sequenceString.begin() + 2, nonterminal.begin(), nonterminal.end());
 				m_referencingSets[EMPTY_CHARACTER + nonterminal].insert(referencingSet.begin(), referencingSet.end());
 			}
 
@@ -73,6 +73,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 				++m_currentTableRowId;
 
 				TableRow * tableRow = new TableRow();
+				tableRow->isError = true;
 
 				std::string const & symbolValueString = sequenceElement.GetValue();
 				if (sequenceElement.IsTerminal())
@@ -103,7 +104,24 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					}
 					tableRow->pushToStack = 0;
 				}
-				else if (sequenceElement.IsNonterminal() || sequenceElement.IsActionName())
+				else if (sequenceElement.IsActionName())
+				{
+					tableRow->referencingSet = std::unordered_set<Token>({ Token::UNKNOWN });
+					if (i == sequence.size() - 1)
+					{
+						tableRow->nextId = 0;
+					}
+					else
+					{
+						tableRow->nextId = m_currentTableRowId + 1;
+					}
+					tableRow->doShift = false;
+					tableRow->isEnd = false;
+					tableRow->pushToStack = 0;
+					tableRow->actionName = std::move(symbolValueString);
+					tableRow->isError = false;
+				}
+				else if (sequenceElement.IsNonterminal())
 				{
 					tableRow->referencingSet = m_referencingSets.at(symbolValueString);
 					if (symbolValueString.at(0) == EMPTY_CHARACTER)
@@ -125,8 +143,6 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					}
 					tableRow->isEnd = false;
 				}
-
-				tableRow->isError = true;
 
 				m_table.AddRow(m_currentTableRowId, tableRow);
 			}
