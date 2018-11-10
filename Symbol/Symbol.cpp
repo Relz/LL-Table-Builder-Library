@@ -11,6 +11,11 @@ bool Symbol::IsNonterminal() const
 	return this->front() == NONTERMINAL_LEFT_BORDER;
 }
 
+bool Symbol::IsActionName() const
+{
+	return this->front() == ACTION_NAME_LEFT_BORDER;
+}
+
 std::string Symbol::GetValue() const
 {
 	return this->substr(1, this->size() - 2);
@@ -21,3 +26,6 @@ char const Symbol::TERMINAL_RIGHT_BORDER = ']';
 
 char const Symbol::NONTERMINAL_LEFT_BORDER = '<';
 char const Symbol::NONTERMINAL_RIGHT_BORDER = '>';
+
+char const Symbol::ACTION_NAME_LEFT_BORDER = '{';
+char const Symbol::ACTION_NAME_RIGHT_BORDER = '}';

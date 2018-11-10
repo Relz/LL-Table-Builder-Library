@@ -7,11 +7,10 @@
 class UnresolvedNextIdInformation
 {
 public:
-	UnresolvedNextIdInformation(std::string sequenceString, unsigned int tableRowId, std::vector<std::string> actionName);
+	UnresolvedNextIdInformation(std::string sequenceString, unsigned int tableRowId);
 
 	std::string sequenceString;
 	unsigned int tableRowId;
-	std::vector<std::string> actionNames;
 };
 
 #endif //LLTABLEVISUALIZER_UNRESOLVEDNEXTIDINFORMATION_H

@@ -20,9 +20,6 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 
 			bool isEmptyCharacterSequence = sequenceString == EMPTY_CHARACTER_STRING_BORDERED;
 
-			std::vector<std::string> actionNames;
-			TryParseActionNames(m_input, actionNames);
-
 			std::unordered_set<Token> referencingSet;
 			ParseReferencingSet(m_input, referencingSet);
 
@@ -39,7 +36,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 
 			UpdateIsErrorOfAlternatives(nonterminal);
 
-			m_unresolvedNextIds.emplace_back(UnresolvedNextIdInformation(sequenceString, m_currentTableRowId, actionNames));
+			m_unresolvedNextIds.emplace_back(UnresolvedNextIdInformation(sequenceString, m_currentTableRowId));
 			m_tableReferences[nonterminal].emplace_back(m_currentTableRowId);
 			m_referencingSets[nonterminal].insert(referencingSet.begin(), referencingSet.end());
 
@@ -89,7 +86,6 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					if (i == sequence.size() - 1)
 					{
 						tableRow->nextId = 0;
-						tableRow->actionNames = std::move(unresolvedNextId.actionNames);
 					}
 					else
 					{
@@ -107,7 +103,7 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					}
 					tableRow->pushToStack = 0;
 				}
-				else if (sequenceElement.IsNonterminal())
+				else if (sequenceElement.IsNonterminal() || sequenceElement.IsActionName())
 				{
 					tableRow->referencingSet = m_referencingSets.at(symbolValueString);
 					if (symbolValueString.at(0) == EMPTY_CHARACTER)
@@ -122,7 +118,6 @@ LLTableBuilder::LLTableBuilder(std::string const & fileName)
 					if (i == sequence.size() - 1)
 					{
 						tableRow->pushToStack = 0;
-						tableRow->actionNames = std::move(unresolvedNextId.actionNames);
 					}
 					else
 					{
@@ -210,14 +205,17 @@ void LLTableBuilder::SplitSequenceString(std::string const & sequenceString, std
 		sequence.emplace_back(Symbol());
 		if (!TryToParseSymbol(
 				sequenceString, i, Symbol::NONTERMINAL_LEFT_BORDER, Symbol::NONTERMINAL_RIGHT_BORDER, sequence.back())
-				&& !TryToParseSymbol(
-					sequenceString, i, Symbol::TERMINAL_LEFT_BORDER, Symbol::TERMINAL_RIGHT_BORDER, sequence.back()))
+			&& !TryToParseSymbol(
+				sequenceString, i, Symbol::TERMINAL_LEFT_BORDER, Symbol::TERMINAL_RIGHT_BORDER, sequence.back())
+			&& !TryToParseSymbol(
+				sequenceString, i, Symbol::ACTION_NAME_LEFT_BORDER, Symbol::ACTION_NAME_RIGHT_BORDER, sequence.back()))
 		{
 			throw std::runtime_error(
 				std::string("Sequence string splitting: ")
 					+ '"' + sequenceString + '"' + "(" + std::to_string(i + 1) + ")" + ": "
 					+ "'" + std::string(1, Symbol::NONTERMINAL_LEFT_BORDER) + "'" + " or "
-					+ "'" + std::string(1, Symbol::TERMINAL_LEFT_BORDER) + "'"
+					+ "'" + std::string(1, Symbol::TERMINAL_LEFT_BORDER) + "'" + " or "
+					+ "'" + std::string(1, Symbol::ACTION_NAME_LEFT_BORDER) + "'"
 					+ " expected");
 		}
 	}
@@ -225,35 +223,11 @@ void LLTableBuilder::SplitSequenceString(std::string const & sequenceString, std
 
 void LLTableBuilder::ParseSequenceString(Input & m_input, std::string & sequenceString)
 {
-	m_input.ReadUntilCharacters({ '{', '/', '\n' }, sequenceString);
+	m_input.ReadUntilCharacters({ '/', '\n' }, sequenceString);
 	if (m_input.IsEndOfLine())
 	{
 		throw std::runtime_error("Referencing set expected");
 	}
-}
-
-bool LLTableBuilder::TryParseActionNames(Input & m_input, std::vector<std::string> & actionNames)
-{
-	bool result = false;
-	char nextCharacter;
-	while (true)
-	{
-		if (!m_input.GetNextCharacter(nextCharacter) || nextCharacter != '{')
-		{
-			break;
-		}
-		m_input.SkipArgument<char>();
-		std::string actionName;
-		m_input.ReadUntilCharacters({ '}', '\n' }, actionName);
-		if (m_input.IsEndOfLine())
-		{
-			throw std::runtime_error("Action name declaration \"" + actionName + "\" wasn't closed by '}' character");
-		}
-		m_input.SkipArgument<char>();
-		actionNames.emplace_back(actionName);
-		result = true;
-	}
-	return result;
 }
 
 void LLTableBuilder::ParseReferencingSet(Input & m_input, std::unordered_set<Token> & referencingSet)

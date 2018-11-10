@@ -7,6 +7,7 @@ public:
 	Symbol() = default;
 	bool IsTerminal() const;
 	bool IsNonterminal() const;
+	bool IsActionName() const;
 	std::string GetValue() const;
 
 	static char const TERMINAL_LEFT_BORDER;
@@ -14,6 +15,9 @@ public:
 
 	static char const NONTERMINAL_LEFT_BORDER;
 	static char const NONTERMINAL_RIGHT_BORDER;
+
+	static char const ACTION_NAME_LEFT_BORDER;
+	static char const ACTION_NAME_RIGHT_BORDER;
 };
 
 #endif
